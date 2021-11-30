@@ -222,3 +222,77 @@ const unwindPipeline = [
       },
   },
 ];
+
+// Lookup
+
+const lookupPipeline = [{
+    $lookup: {
+        from: 'air_airlines',
+        localField: 'airlines',
+        foreignField: 'name',
+        as: 'airlines'
+    }
+}];
+
+const lookup2Pipeline = [
+    {
+        $match: {
+            airplane: /747|380/
+        },
+    },
+    {
+        $lookup: {
+            from: 'air_alliances',
+            localField: 'airline.name',
+            foreignField: 'airlines',
+            as: 'alliance'
+        }
+    },
+    {
+        $project: {
+            alliance: { $arrayElemAt: ['$alliance', 0] }
+        }
+    },
+    {
+        $project: {
+            alliance: '$alliance.name'
+        }
+    },
+    {
+        $group: {
+            _id: '$alliance',
+            count: { $sum: 1 }
+        }
+    }
+]
+
+
+const facetsPipeline = [
+    {
+        $facet: {
+            imdbTopTen: [
+                { $match: { 'imdb.rating': { $gte: 0 }}},
+                { $project: { title: 1, 'imdb.rating': 1 } },
+                { $sort: { 'imdb.rating': -1 } },
+                { $limit: 10 }
+            ],
+            metacriticTopTen: [
+                { $match: { 'metacritic': {$gte: 0, $ne: null}}},
+                { $project: { title: 1, metacritic: 1 } },
+                { $sort: { 'metacritic': -1 } },
+                { $limit: 10 }
+            ]
+        }
+    },
+    {
+        $project: {
+            imdbTopTen: '$imdbTopTen.title',
+            metacriticTopTen: '$metacriticTopTen.title'
+        }
+    },
+    {
+        $project: {
+            bestIntersection: { $setIntersection: ['$imdbTopTen', '$metacriticTopTen']}
+        }
+    }
+]
